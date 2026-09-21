@@ -1,0 +1,206 @@
+USE career_intelligence;
+
+-- 1. Overall Placement Rate
+SELECT
+    COUNT(*) AS total_students,
+    SUM(
+        CASE
+            WHEN placement_status = 'Placed' THEN 1
+            ELSE 0
+        END
+    ) AS placed_students,
+    ROUND(
+        SUM(
+            CASE
+                WHEN placement_status = 'Placed' THEN 1
+                ELSE 0
+            END
+        ) * 100.0 / COUNT(*),
+        2
+    ) AS placement_rate
+FROM placements;
+
+
+-- 2. Placement Status
+SELECT
+    placement_status,
+    COUNT(*) AS student_count
+FROM placements
+GROUP BY placement_status;
+
+
+-- 3. Placement Rate by Branch
+SELECT
+    s.branch,
+    COUNT(*) AS total_students,
+    SUM(
+        CASE
+            WHEN p.placement_status = 'Placed' THEN 1
+            ELSE 0
+        END
+    ) AS placed_students,
+    ROUND(
+        SUM(
+            CASE
+                WHEN p.placement_status = 'Placed' THEN 1
+                ELSE 0
+            END
+        ) * 100.0 / COUNT(*),
+        2
+    ) AS placement_rate
+FROM students s
+JOIN placements p
+    ON s.student_id = p.student_id
+GROUP BY s.branch
+ORDER BY placement_rate DESC;
+
+
+-- 4. Placement Rate by CGPA
+SELECT
+    CASE
+        WHEN s.cgpa < 6 THEN 'Below 6'
+        WHEN s.cgpa < 7 THEN '6 - 6.99'
+        WHEN s.cgpa < 8 THEN '7 - 7.99'
+        WHEN s.cgpa < 9 THEN '8 - 8.99'
+        ELSE '9+'
+    END AS cgpa_range,
+
+    COUNT(*) AS total_students,
+
+    SUM(
+        CASE
+            WHEN p.placement_status = 'Placed' THEN 1
+            ELSE 0
+        END
+    ) AS placed_students,
+
+    ROUND(
+        SUM(
+            CASE
+                WHEN p.placement_status = 'Placed' THEN 1
+                ELSE 0
+            END
+        ) * 100.0 / COUNT(*),
+        2
+    ) AS placement_rate
+
+FROM students s
+JOIN placements p
+    ON s.student_id = p.student_id
+
+GROUP BY cgpa_range
+ORDER BY placement_rate DESC;
+
+
+-- 5. Internship Impact
+SELECT
+    CASE
+        WHEN i.student_id IS NOT NULL THEN 'Has Internship'
+        ELSE 'No Internship'
+    END AS internship_status,
+
+    COUNT(DISTINCT s.student_id) AS total_students,
+
+    COUNT(
+        DISTINCT CASE
+            WHEN p.placement_status = 'Placed'
+            THEN s.student_id
+        END
+    ) AS placed_students
+
+FROM students s
+
+LEFT JOIN internships i
+    ON s.student_id = i.student_id
+
+LEFT JOIN placements p
+    ON s.student_id = p.student_id
+
+GROUP BY internship_status;
+
+
+-- 6. Most Demanded Skills
+SELECT
+    sk.skill_name,
+    sk.skill_category,
+    COUNT(*) AS demand_count
+
+FROM company_requirements cr
+
+JOIN skills sk
+    ON cr.skill_id = sk.skill_id
+
+GROUP BY
+    sk.skill_id,
+    sk.skill_name,
+    sk.skill_category
+
+ORDER BY demand_count DESC;
+
+
+-- 7. Average Package by Job Role
+SELECT
+    job_role,
+    ROUND(AVG(package_lpa), 2) AS average_package
+
+FROM placements
+
+WHERE placement_status = 'Placed'
+
+GROUP BY job_role
+
+ORDER BY average_package DESC;
+
+
+-- 8. Top Hiring Companies
+SELECT
+    company_name,
+    COUNT(*) AS hired_students
+
+FROM placements
+
+WHERE placement_status = 'Placed'
+
+GROUP BY company_name
+
+ORDER BY hired_students DESC;
+
+
+-- 9. Internship Domain Analysis
+SELECT
+    domain,
+    COUNT(*) AS internship_count
+
+FROM internships
+
+GROUP BY domain
+
+ORDER BY internship_count DESC;
+
+
+-- 10. Projects and Placement
+SELECT
+    CASE
+        WHEN pr.student_id IS NOT NULL
+        THEN 'Has Project'
+        ELSE 'No Project'
+    END AS project_status,
+
+    COUNT(DISTINCT s.student_id) AS total_students,
+
+    COUNT(
+        DISTINCT CASE
+            WHEN p.placement_status = 'Placed'
+            THEN s.student_id
+        END
+    ) AS placed_students
+
+FROM students s
+
+LEFT JOIN projects pr
+    ON s.student_id = pr.student_id
+
+LEFT JOIN placements p
+    ON s.student_id = p.student_id
+
+GROUP BY project_status;
